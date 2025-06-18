@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>COVID-19 Symptom Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f3f4f7, #e2eafc);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 500px;
+      height: 90vh;
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 20px;
+      background: #3f72af;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #chatBox {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      position: relative;
+      background-image: url('covid.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* Overlay for readability */
+    #chatBox::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.75);
+      z-index: 0;
+    }
+
+    .chat {
+      margin: 10px 0;
+      max-width: 75%;
+      padding: 10px 15px;
+      border-radius: 20px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease-in;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bot {
+      background: #e1ecf4;
+      color: #333;
+      align-self: flex-start;
+      border-top-left-radius: 0;
+    }
+
+    .user {
+      background: #3f72af;
+      color: white;
+      align-self: flex-end;
+      border-top-right-radius: 0;
+    }
+
+    .btn-container {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 10px 0;
+      z-index: 2;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 25px;
+      background: #112d4e;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #0a192f;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="header">🤖 COVID-19 Symptom Checker</div>
+    <div id="chatBox"></div>
+    <div class="btn-container">
+      <button onclick="startChat()">Start Chat</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const questions = [
+      "Do you have a fever?",
+      "Do you have a dry cough?",
+      "Are you experiencing fatigue?",
+      "Are you having difficulty breathing?"
+    ];
+    const symptoms = ["fever", "dry_cough", "fatigue", "breathing"];
+    const answers = {};
+    let current = 0;
+
+    function addMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = `chat ${sender}`;
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function askNext() {
+      if (current < questions.length) {
+        addMessage(questions[current], 'bot');
+
+        const btnDiv = document.createElement('div');
+        btnDiv.className = 'btn-container';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.innerText = 'Yes';
+        yesBtn.onclick = () => answerQuestion(1);
+
+        const noBtn = document.createElement('button');
+        noBtn.innerText = 'No';
+        noBtn.onclick = () => answerQuestion(0);
+
+        btnDiv.appendChild(yesBtn);
+        btnDiv.appendChild(noBtn);
+        chatBox.appendChild(btnDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } else {
+        submitAnswers();
+      }
+    }
+
+    function answerQuestion(val) {
+      answers[symptoms[current]] = val;
+      addMessage(val === 1 ? 'Yes' : 'No', 'user');
+
+      // Remove last button container
+      const buttons = document.querySelectorAll('.btn-container');
+      if (buttons.length > 0) {
+        buttons[buttons.length - 1].remove();
+      }
+
+      current++;
+      askNext();
+    }
+
+    function submitAnswers() {
+      fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(answers)
+      })
+      .then(res => res.json())
+      .then(data => {
+        addMessage(data.prediction, 'bot');
+      })
+      .catch(err => {
+        addMessage("⚠️ Error connecting to server.", 'bot');
+      });
+    }
+
+    function startChat() {
+      chatBox.innerHTML = '';
+      current = 0;
+      Object.keys(answers).forEach(k => delete answers[k]);
+      askNext();
+    }
+  </script>
+</body>
+</html>

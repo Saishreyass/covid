@@ -21,6 +21,10 @@ y = np.array([1, 1, 0, 0, 1, 0])
 model = LogisticRegression()
 model.fit(X, y)
 
+@app.route('/')
+def home():
+    return "✅ COVID-19 Flask API is live!"
+
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.json
